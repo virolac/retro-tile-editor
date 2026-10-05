@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Retro Tile Editor</title>
+    <link rel="stylesheet" href="/css/uikit.min.css" />
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="/js/uikit.min.js"></script>
+    <script src="/js/uikit-icons.min.js"></script>
+  </head>
+  <body>
+    <div id="app" class="uk-flex uk-flex-column">
+      <header class="uk-flex uk-flex-middle uk-flex-between uk-padding-small uk-background-secondary uk-light">
+        <span class="uk-logo">Retro Tile Editor</span>
+        <div class="uk-flex uk-flex-middle">
+          <select id="gbVersion" class="uk-select uk-form-small uk-form-width-medium">
+            <option value="original">Original Game Boy</option>
+            <option value="pocket_light">Game Boy Pocket & Light</option>
+          </select>
+          <div class="uk-form-custom uk-margin-small-left">
+            <input id="openInput" type="file" accept=".json" />
+            <button class="uk-button uk-button-small uk-button-default" type="button" tabindex="-1">Open</button>
+          </div>
+          <button id="saveBtn" class="uk-button uk-button-small uk-button-default uk-margin-small-left" type="button" disabled>Save</button>
+          <button id="exportBtn" class="uk-button uk-button-small uk-button-primary uk-margin-small-left" type="button" disabled>Export</button>
+        </div>
+      </header>
+      <div class="uk-flex uk-flex-1 uk-overflow-hidden">
+        <aside class="uk-width-medium uk-padding-small uk-background-muted uk-overflow-auto">
+          <form id="newDrawingForm" class="uk-form-stacked">
+            <div class="uk-nav-header">New drawing</div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label" for="kindSelect">Kind:</label>
+              <select id="kindSelect" class="uk-select uk-form-small">
+                <option value="background">Background</option>
+                <option value="sprite">Sprite</option>
+              </select>
+            </div>
+            <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+              <div>
+                <label class="uk-form-label" for="widthInput">
+                  Width (in tiles):
+                  </label>
+                <input id="widthInput" class="uk-input uk-form-small" type="number" value="20" min="1" max="64" required />
+              </div>
+              <div>
+                <label class="uk-form-label" for="heightInput">
+                  Height (in tiles):
+                  </label>
+                  <input id="heightInput" class="uk-input uk-form-small" type="number" value="18" min="1" max="64" required />
+              </div>
+            </div>
+            <button class="uk-button uk-button-default uk-button-small uk-width-1-1 uk-margin-small-top">Add Drawing</button>
+          </form>
+          <hr />
+          <div class="uk-nav-header">Drawings</div>
+          <ul id="drawingList" class="uk-nav uk-nav-default"></ul>
+        </aside>
+        <main class="uk-flex uk-flex-1 uk-overflow-auto uk-padding">
+          <canvas id="editor" class="uk-margin-auto uk-margin-auto-vertical"></canvas>
+          <div id="placeholder" class="uk-placeholder uk-text-muted uk-margin-auto uk-margin-auto-vertical">Add a drawing to start</div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
