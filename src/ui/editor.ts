@@ -63,47 +63,58 @@ export function init(canvas: HTMLCanvasElement): void {
   state.canvas.hidden = true;
 }
 
+/** Adds a blank drawing and makes it the current one. */
 export function newDrawing(
   widthInTiles: number,
   heightInTiles: number,
   kind: DrawingKind,
-): number {
+): void {
   const index = state.drawings.length;
-
-  state.drawings.push({
+  const newEntry: DrawingEntry = {
     kind: kind,
     name: `Drawing ${index + 1}`,
     drawing: createDrawing(widthInTiles, heightInTiles),
-  });
+  };
 
+  state.drawings.push(newEntry);
   state.canvas.hidden = false;
 
-  setChangedSinceSave(true);
-
-  return index;
-}
-
-export function drawingEntry(index: number): Readonly<DrawingEntry> {
-  return state.drawings[index];
-}
-
-export function renameDrawing(index: number, name: string): void {
-  state.drawings[index].name = name;
-
+  selectDrawing(newEntry);
   setChangedSinceSave(true);
 }
 
-export function selectDrawing(index: number): void {
+/**
+ * The drawings in list order.
+ *
+ * The array is read-only, so drawings are only added or removed through the editor,
+ * which keeps the canvas and the unsaved-changes warning up to date.
+ */
+export function drawingEntries(): readonly DrawingEntry[] {
+  return state.drawings;
+}
+
+/** The drawing shown on the canvas, or null when there are no drawings. */
+export function currentEntry(): DrawingEntry | null {
+  return state.currentEntry;
+}
+
+export function selectDrawing(entry: DrawingEntry): void {
   // Don't do anything if the drawing is already selected
-  if (state.drawings[index] === state.currentEntry) return;
+  if (entry === state.currentEntry) return;
 
-  state.currentEntry = state.drawings[index];
+  state.currentEntry = entry;
 
   // Leave tile mode because the zoomed tile might not exist in the new current drawing
   state.zoomedTile = null;
 
   resizeCanvas();
   requestRender();
+}
+
+export function renameDrawing(entry: DrawingEntry, name: string): void {
+  entry.name = name;
+
+  setChangedSinceSave(true);
 }
 
 export function setPaletteForVersion(version: string): void {
@@ -330,12 +341,15 @@ export function saveProject(): void {
   setChangedSinceSave(false);
 }
 
-/** Replaces all drawings, for example with the ones from an opened project file. */
+/** Replaces all drawings, for example with the ones from an opened project file, and makes the first one current. */
 export function replaceDrawings(entries: DrawingEntry[]): void {
   state.drawings = entries;
   state.currentEntry = null;
   state.zoomedTile = null;
   state.canvas.hidden = entries.length === 0;
+
+  // Select the first drawing, if it exists
+  if (entries.length > 0) selectDrawing(state.drawings[0]);
 
   setChangedSinceSave(false);
 }

@@ -1,5 +1,9 @@
 import { TILE_SIZE } from "./model/drawing";
-import { isDrawingKind, projectFromJson } from "./model/project";
+import {
+  isDrawingKind,
+  projectFromJson,
+  type DrawingEntry,
+} from "./model/project";
 import { askToConfirm, showError } from "./ui/dialogs";
 import * as editor from "./ui/editor";
 
@@ -35,14 +39,7 @@ openInput.addEventListener("change", async () => {
     }
 
     editor.replaceDrawings(entries);
-    drawingList.replaceChildren(); // Clear drawings list
-
-    for (let i = 0; i < entries.length; i++) {
-      const drawingListItem = addDrawingToList(i);
-      if (i === 0) makeDrawingActive(drawingListItem, i);
-    }
-
-    setHasDrawings(entries.length > 0);
+    renderDrawingList();
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
 
@@ -72,30 +69,36 @@ function newDrawingFormSubmitted(e: SubmitEvent): void {
   if (!isDrawingKind(kindSelect.value))
     throw new Error(`"${kindSelect.value}" is not a valid kind of drawing.`);
 
-  const drawingIdx = editor.newDrawing(
+  editor.newDrawing(
     widthInput.valueAsNumber,
     heightInput.valueAsNumber,
     kindSelect.value,
   );
 
-  const drawingListItem = addDrawingToList(drawingIdx);
-  makeDrawingActive(drawingListItem, drawingIdx);
-
-  setHasDrawings(true);
+  renderDrawingList();
 }
 
-function addDrawingToList(drawingIdx: number): HTMLLIElement {
-  const entry = editor.drawingEntry(drawingIdx);
+/** Rebuilds the drawing list from the editor's drawings, and shows or hides what depends on having any. */
+function renderDrawingList(): void {
+  const entries = editor.drawingEntries();
+  drawingList.replaceChildren(...entries.map(createDrawingListItem));
 
+  setHasDrawings(entries.length > 0);
+}
+
+function createDrawingListItem(entry: DrawingEntry): HTMLLIElement {
   const drawingListItem = document.createElement("li");
   drawingListItem.classList.add("uk-flex", "uk-flex-middle");
+  if (entry === editor.currentEntry())
+    drawingListItem.classList.add("uk-active");
 
   const drawingListItemContent = document.createElement("a");
   drawingListItemContent.classList.add("uk-flex-1");
   drawingListItemContent.setAttribute("href", "#");
   drawingListItemContent.addEventListener("click", (e: PointerEvent) => {
     e.preventDefault();
-    makeDrawingActive(drawingListItem, drawingIdx);
+    editor.selectDrawing(entry);
+    renderDrawingList();
   });
 
   const nameSpan = document.createElement("span");
@@ -123,26 +126,13 @@ function addDrawingToList(drawingIdx: number): HTMLLIElement {
 
     if (!newName) return;
 
-    editor.renameDrawing(drawingIdx, newName);
-    nameSpan.textContent = newName;
+    editor.renameDrawing(entry, newName);
+    renderDrawingList();
   });
 
   drawingListItem.append(drawingListItemContent, renameBtn);
 
-  drawingList.append(drawingListItem);
-
   return drawingListItem;
-}
-
-function makeDrawingActive(item: HTMLLIElement, drawingIdx: number): void {
-  const currentActiveDrawing =
-    drawingList.querySelector<HTMLLIElement>(".uk-active");
-
-  if (currentActiveDrawing) currentActiveDrawing.classList.remove("uk-active");
-
-  item.classList.add("uk-active");
-
-  editor.selectDrawing(drawingIdx);
 }
 
 function setHasDrawings(hasDrawings: boolean): void {
