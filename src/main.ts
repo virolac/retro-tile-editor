@@ -1,6 +1,6 @@
 import { TILE_SIZE } from "./model/drawing";
 import { isDrawingKind, projectFromJson } from "./model/project";
-import { showError } from "./ui/dialogs";
+import { askToConfirm, showError } from "./ui/dialogs";
 import * as editor from "./ui/editor";
 
 window.addEventListener("keydown", editor.handleKey);
@@ -24,6 +24,15 @@ openInput.addEventListener("change", async () => {
   try {
     const json = await projectFile.text();
     const entries = projectFromJson(json);
+
+    if (editor.hasUnsavedChanges()) {
+      const confirmTitle = "Replace your drawings?";
+      const confirmMessage = `Opening ${projectFile.name} replaces your drawings, and the changes since your last save will be lost.`;
+
+      const shouldReplace = await askToConfirm(confirmTitle, confirmMessage);
+
+      if (!shouldReplace) return;
+    }
 
     editor.replaceDrawings(entries);
     drawingList.replaceChildren(); // Clear drawings list

@@ -35,6 +35,7 @@ type EditorState = {
   currentShade: Shade;
   zoomedTile: Point | null;
   renderRequested: boolean;
+  changedSinceSave: boolean;
 };
 
 type View = {
@@ -56,6 +57,7 @@ export function init(canvas: HTMLCanvasElement): void {
     currentShade: Shade.BRIGHTEST,
     zoomedTile: null,
     renderRequested: false,
+    changedSinceSave: false,
   };
 
   state.canvas.hidden = true;
@@ -76,6 +78,8 @@ export function newDrawing(
 
   state.canvas.hidden = false;
 
+  setChangedSinceSave(true);
+
   return index;
 }
 
@@ -85,6 +89,8 @@ export function drawingEntry(index: number): Readonly<DrawingEntry> {
 
 export function renameDrawing(index: number, name: string): void {
   state.drawings[index].name = name;
+
+  setChangedSinceSave(true);
 }
 
 export function selectDrawing(index: number): void {
@@ -288,6 +294,7 @@ export function handlePointerDown(e: PointerEvent): void {
 
   if (e.buttons === 1) {
     setDrawingPixel(state.currentEntry!.drawing, point, state.currentShade);
+    setChangedSinceSave(true);
   } else if (e.buttons === 2) {
     if (state.zoomedTile === null) state.zoomedTile = pixelToTile(point);
     else state.zoomedTile = null;
@@ -307,6 +314,8 @@ export function handlePointerMove(e: PointerEvent): void {
 
   setDrawingPixel(state.currentEntry!.drawing, point, state.currentShade);
   requestRender();
+
+  setChangedSinceSave(true);
 }
 
 function fileNameFor(name: string): string {
@@ -317,6 +326,8 @@ export function saveProject(): void {
   if (state.drawings.length === 0) return;
 
   downloadJson(projectToJson(state.drawings), "project.json");
+
+  setChangedSinceSave(false);
 }
 
 /** Replaces all drawings, for example with the ones from an opened project file. */
@@ -325,6 +336,8 @@ export function replaceDrawings(entries: DrawingEntry[]): void {
   state.currentEntry = null;
   state.zoomedTile = null;
   state.canvas.hidden = entries.length === 0;
+
+  setChangedSinceSave(false);
 }
 
 export function exportDrawings(): void {
@@ -360,4 +373,20 @@ export function exportDrawings(): void {
 
     downloadBinary(tilemapData, `${fileNameFor(entry.name)}.tlm`);
   }
+}
+
+function warnBeforeLeaving(e: BeforeUnloadEvent): void {
+  e.preventDefault();
+}
+
+export function hasUnsavedChanges(): boolean {
+  return state.changedSinceSave;
+}
+
+/** Records whether the drawings changed since the last Save or Open, and warns before leaving the page only while they have. */
+function setChangedSinceSave(changed: boolean): void {
+  state.changedSinceSave = changed;
+
+  if (changed) window.addEventListener("beforeunload", warnBeforeLeaving);
+  else window.removeEventListener("beforeunload", warnBeforeLeaving);
 }
