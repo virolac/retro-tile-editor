@@ -130,7 +130,25 @@ function createDrawingListItem(entry: DrawingEntry): HTMLLIElement {
     renderDrawingList();
   });
 
-  drawingListItem.append(drawingListItemContent, renameBtn);
+  const deleteBtn = document.createElement("a");
+  deleteBtn.classList.add("uk-icon-link", "uk-margin-small-left");
+  deleteBtn.setAttribute("href", "#");
+  deleteBtn.setAttribute("uk-icon", "trash");
+  deleteBtn.addEventListener("click", async (e: PointerEvent) => {
+    e.preventDefault();
+
+    const confirmTitle = `Delete ${entry.name}?`;
+    const confirmMessage = "The drawing will be removed from the project.";
+
+    const shouldDelete = await askToConfirm(confirmTitle, confirmMessage);
+
+    if (!shouldDelete) return;
+
+    editor.deleteDrawing(entry);
+    renderDrawingList();
+  });
+
+  drawingListItem.append(drawingListItemContent, renameBtn, deleteBtn);
 
   return drawingListItem;
 }

@@ -117,6 +117,33 @@ export function renameDrawing(entry: DrawingEntry, name: string): void {
   setChangedSinceSave(true);
 }
 
+/**
+ * Removes a drawing.
+ *
+ * If it was the current one, the drawing that takes its place in the list
+ * (or the one before it, if it was last) becomes current.
+ */
+export function deleteDrawing(entry: DrawingEntry): void {
+  const index = state.drawings.indexOf(entry);
+
+  // Not in the list. Without this, splice(-1, 1) would remove the last drawing.
+  if (index === -1) return;
+
+  if (entry === state.currentEntry) {
+    state.currentEntry = null;
+    state.zoomedTile = null;
+
+    if (index < state.drawings.length - 1)
+      selectDrawing(state.drawings[index + 1]);
+    else if (index > 0) selectDrawing(state.drawings[index - 1]);
+  }
+
+  state.drawings.splice(index, 1);
+  state.canvas.hidden = state.drawings.length === 0;
+
+  setChangedSinceSave(true);
+}
+
 export function setPaletteForVersion(version: string): void {
   if (version === "original") state.currentPalette = GREEN;
   else state.currentPalette = GRAY;
