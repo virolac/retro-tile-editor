@@ -1,6 +1,9 @@
+import { encodeTilemap, encodeTileNumbers, encodeTiles } from "../model/encode";
 import {
+  buildTileSet,
   createDrawing,
   getDrawingPixel,
+  MAX_TILES,
   pixelToTile,
   setDrawingPixel,
   TILE_SIZE,
@@ -8,8 +11,10 @@ import {
   type Point,
 } from "../model/drawing";
 import { Shade } from "../model/shade";
+import { downloadBinary } from "./download";
 import { GRAY, GREEN, TRANSPARENT, type Palette, type Rgba } from "./palette";
 import { type DrawingEntry, type DrawingKind } from "../model/project";
+import { showError } from "./dialogs";
 
 const TARGET_CANVAS_SIZE = 832;
 const MIN_PIXEL_SIZE = 3;
@@ -298,4 +303,43 @@ export function handlePointerMove(e: PointerEvent): void {
 
   setDrawingPixel(state.currentEntry!.drawing, point, state.currentShade);
   requestRender();
+}
+
+function fileNameFor(name: string): string {
+  return name.toLowerCase().replaceAll(" ", "-");
+}
+
+export function exportDrawings(): void {
+  if (state.drawings.length === 0) return;
+
+  const allDrawings = state.drawings.map((e) => e.drawing);
+  const tileSet = buildTileSet(allDrawings);
+  const numTiles = tileSet.tiles.length;
+
+  if (numTiles > MAX_TILES) {
+    showError(
+      "Can't export",
+      `These drawings use ${numTiles} unique tiles; the Game Boy can only use ${MAX_TILES}.`,
+    );
+    return;
+  }
+
+  const tileData = encodeTiles(tileSet.tiles);
+  downloadBinary(tileData, "tiles.2bpp");
+
+  for (let i = 0; i < state.drawings.length; i++) {
+    const entry = state.drawings[i];
+
+    let tilemapData: Uint8Array<ArrayBuffer>;
+    if (entry.kind === "background") {
+      tilemapData = encodeTilemap(
+        tileSet.tilemaps[i],
+        entry.drawing.width / TILE_SIZE,
+      );
+    } else {
+      tilemapData = encodeTileNumbers(tileSet.tilemaps[i]);
+    }
+
+    downloadBinary(tilemapData, `${fileNameFor(entry.name)}.tlm`);
+  }
 }

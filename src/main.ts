@@ -14,6 +14,9 @@ const heightInput = document.querySelector<HTMLInputElement>("#heightInput")!;
 const drawingList = document.querySelector<HTMLUListElement>("#drawingList")!;
 const placeholder = document.querySelector<HTMLDivElement>("#placeholder")!;
 
+const exportBtn = document.querySelector<HTMLButtonElement>("#exportBtn")!;
+exportBtn.addEventListener("click", editor.exportDrawings);
+
 const newDrawingForm =
   document.querySelector<HTMLFormElement>("#newDrawingForm")!;
 newDrawingForm.addEventListener("submit", newDrawingFormSubmitted);
@@ -102,6 +105,7 @@ function makeDrawingActive(item: HTMLLIElement, drawingIdx: number): void {
 
 function setHasDrawings(hasDrawings: boolean): void {
   placeholder.hidden = hasDrawings;
+  exportBtn.disabled = !hasDrawings;
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#editor")!;

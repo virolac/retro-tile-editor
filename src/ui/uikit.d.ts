@@ -2,5 +2,6 @@
 declare const UIkit: {
   modal: {
     prompt(message: string, value: string): Promise<string | null>;
+    alert(message: string | HTMLElement): Promise<void>;
   };
 };
