@@ -1,5 +1,6 @@
 import { TILE_SIZE } from "./model/drawing";
-import { isDrawingKind } from "./model/project";
+import { isDrawingKind, projectFromJson } from "./model/project";
+import { showError } from "./ui/dialogs";
 import * as editor from "./ui/editor";
 
 window.addEventListener("keydown", editor.handleKey);
@@ -13,6 +14,38 @@ const widthInput = document.querySelector<HTMLInputElement>("#widthInput")!;
 const heightInput = document.querySelector<HTMLInputElement>("#heightInput")!;
 const drawingList = document.querySelector<HTMLUListElement>("#drawingList")!;
 const placeholder = document.querySelector<HTMLDivElement>("#placeholder")!;
+
+const openInput = document.querySelector<HTMLInputElement>("#openInput")!;
+openInput.addEventListener("change", async () => {
+  const projectFile = openInput.files?.[0];
+
+  if (!projectFile) return;
+
+  try {
+    const json = await projectFile.text();
+    const entries = projectFromJson(json);
+
+    editor.replaceDrawings(entries);
+    drawingList.replaceChildren(); // Clear drawings list
+
+    for (let i = 0; i < entries.length; i++) {
+      const drawingListItem = addDrawingToList(i);
+      if (i === 0) makeDrawingActive(drawingListItem, i);
+    }
+
+    setHasDrawings(entries.length > 0);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+
+    showError(`Couldn't open ${projectFile.name}`, errorMessage);
+  } finally {
+    // Ensure that the same file can be opened multiple times
+    openInput.value = "";
+  }
+});
+
+const saveBtn = document.querySelector<HTMLButtonElement>("#saveBtn")!;
+saveBtn.addEventListener("click", editor.saveProject);
 
 const exportBtn = document.querySelector<HTMLButtonElement>("#exportBtn")!;
 exportBtn.addEventListener("click", editor.exportDrawings);
@@ -105,6 +138,7 @@ function makeDrawingActive(item: HTMLLIElement, drawingIdx: number): void {
 
 function setHasDrawings(hasDrawings: boolean): void {
   placeholder.hidden = hasDrawings;
+  saveBtn.disabled = !hasDrawings;
   exportBtn.disabled = !hasDrawings;
 }
 

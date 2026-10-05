@@ -17,3 +17,9 @@ export function downloadBinary(
 
   download(blob, filename);
 }
+
+export function downloadJson(json: string, filename: string): void {
+  const blob = new Blob([json], { type: "application/json" });
+
+  download(blob, filename);
+}

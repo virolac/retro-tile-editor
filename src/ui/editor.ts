@@ -11,9 +11,13 @@ import {
   type Point,
 } from "../model/drawing";
 import { Shade } from "../model/shade";
-import { downloadBinary } from "./download";
+import { downloadBinary, downloadJson } from "./download";
 import { GRAY, GREEN, TRANSPARENT, type Palette, type Rgba } from "./palette";
-import { type DrawingEntry, type DrawingKind } from "../model/project";
+import {
+  projectToJson,
+  type DrawingEntry,
+  type DrawingKind,
+} from "../model/project";
 import { showError } from "./dialogs";
 
 const TARGET_CANVAS_SIZE = 832;
@@ -307,6 +311,20 @@ export function handlePointerMove(e: PointerEvent): void {
 
 function fileNameFor(name: string): string {
   return name.toLowerCase().replaceAll(" ", "-");
+}
+
+export function saveProject(): void {
+  if (state.drawings.length === 0) return;
+
+  downloadJson(projectToJson(state.drawings), "project.json");
+}
+
+/** Replaces all drawings, for example with the ones from an opened project file. */
+export function replaceDrawings(entries: DrawingEntry[]): void {
+  state.drawings = entries;
+  state.currentEntry = null;
+  state.zoomedTile = null;
+  state.canvas.hidden = entries.length === 0;
 }
 
 export function exportDrawings(): void {
