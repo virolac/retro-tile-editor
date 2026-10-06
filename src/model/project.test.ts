@@ -239,4 +239,30 @@ describe("projectFromJson: files it refuses", () => {
       ).toThrow();
     }
   });
+
+  test("two drawings with the same name", () => {
+    const rows = blankRows(1, 1);
+
+    expect(() =>
+      projectFromJson(
+        fileWith(
+          { name: "Ball", kind: "sprite", rows },
+          { name: "Ball", kind: "sprite", rows },
+        ),
+      ),
+    ).toThrow();
+  });
+
+  test("names that would export to the same file, with that file in the message", () => {
+    const rows = blankRows(1, 1);
+
+    expect(() =>
+      projectFromJson(
+        fileWith(
+          { name: "Big Brick", kind: "background", rows },
+          { name: "big-brick", kind: "background", rows },
+        ),
+      ),
+    ).toThrow("big-brick.tlm");
+  });
 });

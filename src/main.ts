@@ -1,4 +1,5 @@
 import { TILE_SIZE } from "./model/drawing";
+import { fileNameFor } from "./model/names";
 import {
   isDrawingKind,
   projectFromJson,
@@ -126,7 +127,17 @@ function createDrawingListItem(entry: DrawingEntry): HTMLLIElement {
 
     if (!newName) return;
 
-    editor.renameDrawing(entry, newName);
+    if (!editor.renameDrawing(entry, newName)) {
+      const newFileName = fileNameFor(newName) + ".tlm";
+
+      showError(
+        "Name already taken",
+        `Another drawing already exports to ${newFileName}. Names count as the same when they differ only in upper and lower case, or in spaces and dashes.`,
+      );
+
+      return;
+    }
+
     renderDrawingList();
   });
 

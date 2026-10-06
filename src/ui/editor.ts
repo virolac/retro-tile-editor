@@ -19,6 +19,7 @@ import {
   type DrawingKind,
 } from "../model/project";
 import { showError } from "./dialogs";
+import { defaultDrawingName, fileNameFor, isNameTaken } from "../model/names";
 
 const TARGET_CANVAS_SIZE = 832;
 const MIN_PIXEL_SIZE = 3;
@@ -63,16 +64,15 @@ export function init(canvas: HTMLCanvasElement): void {
   state.canvas.hidden = true;
 }
 
-/** Adds a blank drawing and makes it the current one. */
+/** Adds a blank drawing with a name that isn't taken, and makes it the current one. */
 export function newDrawing(
   widthInTiles: number,
   heightInTiles: number,
   kind: DrawingKind,
 ): void {
-  const index = state.drawings.length;
   const newEntry: DrawingEntry = {
     kind: kind,
-    name: `Drawing ${index + 1}`,
+    name: defaultDrawingName(state.drawings),
     drawing: createDrawing(widthInTiles, heightInTiles),
   };
 
@@ -111,10 +111,19 @@ export function selectDrawing(entry: DrawingEntry): void {
   requestRender();
 }
 
-export function renameDrawing(entry: DrawingEntry, name: string): void {
+/**
+ * Renames a drawing, unless another drawing would export to the same file name.
+ *
+ * Returns whether it was renamed.
+ */
+export function renameDrawing(entry: DrawingEntry, name: string): boolean {
+  if (isNameTaken(name, state.drawings, entry)) return false;
+
   entry.name = name;
 
   setChangedSinceSave(true);
+
+  return true;
 }
 
 /**
@@ -354,10 +363,6 @@ export function handlePointerMove(e: PointerEvent): void {
   requestRender();
 
   setChangedSinceSave(true);
-}
-
-function fileNameFor(name: string): string {
-  return name.toLowerCase().replaceAll(" ", "-");
 }
 
 export function saveProject(): void {

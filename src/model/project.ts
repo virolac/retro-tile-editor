@@ -1,4 +1,5 @@
 import { createDrawing, TILE_SIZE, type Drawing } from "./drawing";
+import { fileNameFor, isNameTaken } from "./names";
 
 export type DrawingKind = "background" | "sprite";
 
@@ -164,7 +165,11 @@ function drawingFromRows(rows: string[], name: string): Drawing {
   return drawing;
 }
 
-/** Reads the text of a project file back into drawings. Throws if the text isn't a valid project file. */
+/**
+ * Reads the text of a project file back into drawings.
+ *
+ * Throws if the text isn't a valid project file, or if two of its drawings would export to the same file name.
+ */
 export function projectFromJson(json: string): DrawingEntry[] {
   const value: unknown = JSON.parse(json);
 
@@ -172,6 +177,12 @@ export function projectFromJson(json: string): DrawingEntry[] {
 
   const entries: DrawingEntry[] = [];
   for (const savedDrawing of value.drawings) {
+    if (isNameTaken(savedDrawing.name, entries)) {
+      throw new Error(
+        `Drawing "${savedDrawing.name}" would export to ${fileNameFor(savedDrawing.name)}.tlm, which an earlier drawing already uses.`,
+      );
+    }
+
     entries.push({
       name: savedDrawing.name,
       kind: savedDrawing.kind,
