@@ -28,6 +28,9 @@
       </header>
       <div class="uk-flex uk-flex-1 uk-overflow-hidden">
         <aside class="uk-width-medium uk-padding-small uk-background-muted uk-overflow-auto">
+          <div class="uk-nav-header">Shade</div>
+          <div id="shadePicker" class="uk-flex"></div>
+          <hr />
           <form id="newDrawingForm" class="uk-form-stacked">
             <div class="uk-nav-header">New drawing</div>
             <div class="uk-margin-small">
@@ -58,7 +61,7 @@
           <ul id="drawingList" class="uk-nav uk-nav-default"></ul>
         </aside>
         <main class="uk-flex uk-flex-1 uk-overflow-auto uk-padding">
-          <canvas id="editor" class="uk-margin-auto uk-margin-auto-vertical"></canvas>
+          <canvas id="editor" class="uk-margin-auto uk-margin-auto-vertical checkerboard"></canvas>
           <div id="placeholder" class="uk-placeholder uk-text-muted uk-margin-auto uk-margin-auto-vertical">Add a drawing to start</div>
         </main>
       </div>

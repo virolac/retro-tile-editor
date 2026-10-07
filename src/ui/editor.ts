@@ -37,6 +37,7 @@ type EditorState = {
   zoomedTile: Point | null;
   renderRequested: boolean;
   changedSinceSave: boolean;
+  onChange: () => void;
 };
 
 type View = {
@@ -48,20 +49,30 @@ type View = {
 
 let state: EditorState;
 
-export function init(canvas: HTMLCanvasElement): void {
+/**
+ * Sets up the editor on `canvas`.
+ *
+ * `onChange` is called whenever the editor's state changes in a way the rest of the page shows
+ * (the drawings, the current drawing, the shade or the palette), and once at the end of `init`,
+ * so the page starts out in sync.
+ */
+export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
   state = {
     canvas: canvas,
     pixelCanvas: document.createElement("canvas"),
     drawings: [],
     currentEntry: null,
     currentPalette: GREEN,
-    currentShade: Shade.BRIGHTEST,
+    currentShade: Shade.DARKEST,
     zoomedTile: null,
     renderRequested: false,
     changedSinceSave: false,
+    onChange: onChange,
   };
 
   state.canvas.hidden = true;
+
+  onChange();
 }
 
 /** Adds a blank drawing with a name that isn't taken, and makes it the current one. */
@@ -81,6 +92,8 @@ export function newDrawing(
 
   selectDrawing(newEntry);
   setChangedSinceSave(true);
+
+  state.onChange();
 }
 
 /**
@@ -109,6 +122,8 @@ export function selectDrawing(entry: DrawingEntry): void {
 
   resizeCanvas();
   requestRender();
+
+  state.onChange();
 }
 
 /**
@@ -122,6 +137,8 @@ export function renameDrawing(entry: DrawingEntry, name: string): boolean {
   entry.name = name;
 
   setChangedSinceSave(true);
+
+  state.onChange();
 
   return true;
 }
@@ -151,6 +168,8 @@ export function deleteDrawing(entry: DrawingEntry): void {
   state.canvas.hidden = state.drawings.length === 0;
 
   setChangedSinceSave(true);
+
+  state.onChange();
 }
 
 export function setPaletteForVersion(version: string): void {
@@ -158,6 +177,24 @@ export function setPaletteForVersion(version: string): void {
   else state.currentPalette = GRAY;
 
   if (state.currentEntry !== null) requestRender();
+
+  state.onChange();
+}
+
+/** The shade that painting uses. */
+export function currentShade(): Shade {
+  return state.currentShade;
+}
+
+/** Makes `shade` the one that painting uses, and reports the change. */
+export function selectShade(shade: Shade): void {
+  state.currentShade = shade;
+  state.onChange();
+}
+
+/** The color `shade` shows as on the canvas: the current palette's color, or transparent for shade 0 of a sprite. */
+export function shadeColor(shade: Shade): Rgba {
+  return colorFor(shade, state.currentEntry?.kind ?? "background");
 }
 
 function pixelSizeFor(width: number, height: number): number {
@@ -307,16 +344,16 @@ export function handleKey(e: KeyboardEvent): void {
 
   switch (Number(e.key)) {
     case 1:
-      state.currentShade = Shade.BRIGHTEST;
+      selectShade(Shade.BRIGHTEST);
       break;
     case 2:
-      state.currentShade = Shade.LIGHT;
+      selectShade(Shade.LIGHT);
       break;
     case 3:
-      state.currentShade = Shade.DARK;
+      selectShade(Shade.DARK);
       break;
     case 4:
-      state.currentShade = Shade.DARKEST;
+      selectShade(Shade.DARKEST);
       break;
   }
 }
@@ -384,6 +421,8 @@ export function replaceDrawings(entries: DrawingEntry[]): void {
   if (entries.length > 0) selectDrawing(state.drawings[0]);
 
   setChangedSinceSave(false);
+
+  state.onChange();
 }
 
 export function exportDrawings(): void {

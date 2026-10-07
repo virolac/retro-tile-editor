@@ -5,8 +5,10 @@ import {
   projectFromJson,
   type DrawingEntry,
 } from "./model/project";
+import { Shade } from "./model/shade";
 import { askToConfirm, showError } from "./ui/dialogs";
 import * as editor from "./ui/editor";
+import { cssColor } from "./ui/palette";
 
 window.addEventListener("keydown", editor.handleKey);
 
@@ -40,7 +42,6 @@ openInput.addEventListener("change", async () => {
     }
 
     editor.replaceDrawings(entries);
-    renderDrawingList();
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
 
@@ -57,11 +58,44 @@ saveBtn.addEventListener("click", editor.saveProject);
 const exportBtn = document.querySelector<HTMLButtonElement>("#exportBtn")!;
 exportBtn.addEventListener("click", editor.exportDrawings);
 
+const shadePicker = document.querySelector<HTMLDivElement>("#shadePicker")!;
+
 const newDrawingForm =
   document.querySelector<HTMLFormElement>("#newDrawingForm")!;
 newDrawingForm.addEventListener("submit", newDrawingFormSubmitted);
 
 const kindSelect = document.querySelector<HTMLSelectElement>("#kindSelect")!;
+
+/**
+ * A button that shows `shade` in the color it has on the canvas.
+ *
+ * Clicking it makes `shade` the one painting uses.
+ */
+function createSwatch(shade: Shade): HTMLButtonElement {
+  const shadeColor = editor.shadeColor(shade);
+
+  const swatch = document.createElement("button");
+  swatch.style.backgroundColor = cssColor(shadeColor);
+  swatch.classList.add("swatch");
+  swatch.classList.toggle("checkerboard", shadeColor[3] === 0);
+  swatch.classList.toggle("uk-margin-small-left", shade > 0);
+  swatch.setAttribute("type", "button");
+  swatch.setAttribute("title", `Shade ${shade} (key ${shade + 1})`);
+  swatch.setAttribute(
+    "aria-pressed",
+    shade === editor.currentShade() ? "true" : "false",
+  );
+  swatch.addEventListener("click", () => editor.selectShade(shade));
+
+  return swatch;
+}
+
+/** Rebuilds the shade picker: one swatch per shade, in the color it has on the canvas, with the current one pressed. */
+function renderShadePicker(): void {
+  const allShades = Object.values(Shade);
+
+  shadePicker.replaceChildren(...allShades.map(createSwatch));
+}
 
 function newDrawingFormSubmitted(e: SubmitEvent): void {
   // Prevent page reload
@@ -75,8 +109,6 @@ function newDrawingFormSubmitted(e: SubmitEvent): void {
     heightInput.valueAsNumber,
     kindSelect.value,
   );
-
-  renderDrawingList();
 }
 
 /** Rebuilds the drawing list from the editor's drawings, and shows or hides what depends on having any. */
@@ -99,7 +131,6 @@ function createDrawingListItem(entry: DrawingEntry): HTMLLIElement {
   drawingListItemContent.addEventListener("click", (e: PointerEvent) => {
     e.preventDefault();
     editor.selectDrawing(entry);
-    renderDrawingList();
   });
 
   const nameSpan = document.createElement("span");
@@ -137,8 +168,6 @@ function createDrawingListItem(entry: DrawingEntry): HTMLLIElement {
 
       return;
     }
-
-    renderDrawingList();
   });
 
   const deleteBtn = document.createElement("a");
@@ -156,7 +185,6 @@ function createDrawingListItem(entry: DrawingEntry): HTMLLIElement {
     if (!shouldDelete) return;
 
     editor.deleteDrawing(entry);
-    renderDrawingList();
   });
 
   drawingListItem.append(drawingListItemContent, renameBtn, deleteBtn);
@@ -170,9 +198,15 @@ function setHasDrawings(hasDrawings: boolean): void {
   exportBtn.disabled = !hasDrawings;
 }
 
+/** Rebuilds everything in the sidebar from the editor's state: the shade picker and the drawing list. */
+function renderSidebar(): void {
+  renderShadePicker();
+  renderDrawingList();
+}
+
 const canvas = document.querySelector<HTMLCanvasElement>("#editor")!;
 canvas.addEventListener("pointerdown", editor.handlePointerDown);
 canvas.addEventListener("pointermove", editor.handlePointerMove);
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-editor.init(canvas);
+editor.init(canvas, renderSidebar);
