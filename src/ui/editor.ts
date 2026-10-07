@@ -37,6 +37,8 @@ type EditorState = {
   zoomedTile: Point | null;
   renderRequested: boolean;
   changedSinceSave: boolean;
+  /** Whether the current paint stroke has changed pixels the page hasn't heard about yet. */
+  strokePainted: boolean;
   onChange: () => void;
 };
 
@@ -67,12 +69,21 @@ export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
     zoomedTile: null,
     renderRequested: false,
     changedSinceSave: false,
+    strokePainted: false,
     onChange: onChange,
   };
 
   state.canvas.hidden = true;
 
   onChange();
+}
+
+/** How many different tiles all the drawings use together. */
+export function tileCount(): number {
+  const allDrawings = state.drawings.map((e) => e.drawing);
+  const tileSet = buildTileSet(allDrawings);
+
+  return tileSet.tiles.length;
 }
 
 /** Adds a blank drawing with a name that isn't taken, and makes it the current one. */
@@ -358,6 +369,18 @@ export function handleKey(e: KeyboardEvent): void {
   }
 }
 
+/**
+ * Ends a paint stroke, and reports the change if the stroke painted anything.
+ *
+ * Listen for it on the whole window, so letting go of the button outside the canvas still ends the stroke.
+ */
+export function handlePointerUp(): void {
+  if (!state.strokePainted) return;
+
+  state.strokePainted = false;
+  state.onChange();
+}
+
 function pixelUnderPointer(e: PointerEvent): Point | null {
   const view = getView();
   const rect = state.canvas.getBoundingClientRect();
@@ -379,6 +402,7 @@ export function handlePointerDown(e: PointerEvent): void {
   if (e.buttons === 1) {
     setDrawingPixel(state.currentEntry!.drawing, point, state.currentShade);
     setChangedSinceSave(true);
+    state.strokePainted = true;
   } else if (e.buttons === 2) {
     if (state.zoomedTile === null) state.zoomedTile = pixelToTile(point);
     else state.zoomedTile = null;
@@ -398,8 +422,9 @@ export function handlePointerMove(e: PointerEvent): void {
 
   setDrawingPixel(state.currentEntry!.drawing, point, state.currentShade);
   requestRender();
-
   setChangedSinceSave(true);
+
+  state.strokePainted = true;
 }
 
 export function saveProject(): void {

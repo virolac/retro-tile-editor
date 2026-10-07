@@ -1,4 +1,4 @@
-import { TILE_SIZE } from "./model/drawing";
+import { MAX_TILES, TILE_SIZE } from "./model/drawing";
 import { fileNameFor } from "./model/names";
 import {
   isDrawingKind,
@@ -11,6 +11,7 @@ import * as editor from "./ui/editor";
 import { cssColor } from "./ui/palette";
 
 window.addEventListener("keydown", editor.handleKey);
+window.addEventListener("pointerup", editor.handlePointerUp);
 
 const versionSelect = document.querySelector<HTMLSelectElement>("#gbVersion")!;
 versionSelect.addEventListener("change", () =>
@@ -65,6 +66,7 @@ const newDrawingForm =
 newDrawingForm.addEventListener("submit", newDrawingFormSubmitted);
 
 const kindSelect = document.querySelector<HTMLSelectElement>("#kindSelect")!;
+const tileCount = document.querySelector<HTMLParagraphElement>("#tileCount")!;
 
 /**
  * A button that shows `shade` in the color it has on the canvas.
@@ -198,10 +200,22 @@ function setHasDrawings(hasDrawings: boolean): void {
   exportBtn.disabled = !hasDrawings;
 }
 
-/** Rebuilds everything in the sidebar from the editor's state: the shade picker and the drawing list. */
+/** Shows how many different tiles the drawings use, in red when that's more than the Game Boy can hold. */
+function renderTileCount(): void {
+  const numTiles = editor.tileCount();
+  const tooManyTiles = numTiles > MAX_TILES;
+
+  tileCount.textContent = `${numTiles} of ${MAX_TILES} tiles`;
+  tileCount.classList.toggle("uk-text-danger", tooManyTiles);
+
+  if (tooManyTiles) tileCount.textContent += " (too many to export)";
+}
+
+/** Rebuilds everything in the sidebar from the editor's state: the shade picker, the drawing list and the tile count. */
 function renderSidebar(): void {
   renderShadePicker();
   renderDrawingList();
+  renderTileCount();
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#editor")!;
