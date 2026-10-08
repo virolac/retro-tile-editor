@@ -14,9 +14,13 @@
       <header class="uk-flex uk-flex-middle uk-flex-between uk-padding-small uk-background-secondary uk-light">
         <span class="uk-logo">Retro Tile Editor</span>
         <div class="uk-flex uk-flex-middle">
-          <select id="gbVersion" class="uk-select uk-form-small uk-form-width-medium">
+          <select id="versionSelect" class="uk-select uk-form-small uk-form-width-medium" autocomplete="off">
             <option value="original">Original Game Boy</option>
             <option value="pocket_light">Game Boy Pocket & Light</option>
+          </select>
+          <select id="spriteHeightSelect" class="uk-select uk-form-small uk-form-width-small uk-margin-small-left" autocomplete="off">
+            <option value="8">8×8 sprites</option>
+            <option value="16">8×16 sprites</option>
           </select>
           <div class="uk-form-custom uk-margin-small-left">
             <input id="openInput" type="file" accept=".json" />

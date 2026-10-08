@@ -14,10 +14,20 @@ import { cssColor } from "./ui/palette";
 window.addEventListener("keydown", editor.handleKey);
 window.addEventListener("pointerup", editor.handlePointerUp);
 
-const versionSelect = document.querySelector<HTMLSelectElement>("#gbVersion")!;
+const versionSelect =
+  document.querySelector<HTMLSelectElement>("#versionSelect")!;
 versionSelect.addEventListener("change", () =>
   editor.setPaletteForVersion(versionSelect.value),
 );
+
+const spriteHeightSelect = document.querySelector<HTMLSelectElement>(
+  "#spriteHeightSelect",
+)!;
+spriteHeightSelect.addEventListener("change", () => {
+  const spriteHeight = spriteHeightSelect.value === "8" ? 8 : 16;
+
+  editor.setSpriteHeight(spriteHeight);
+});
 
 const widthInput = document.querySelector<HTMLInputElement>("#widthInput")!;
 const heightInput = document.querySelector<HTMLInputElement>("#heightInput")!;
@@ -229,7 +239,7 @@ function setHasDrawings(hasDrawings: boolean): void {
   exportBtn.disabled = !hasDrawings;
 }
 
-/** Shows how many different tiles the drawings use, in red when that's more than the Game Boy can hold. */
+/** Shows how many tiles the export would write, in red when that's more than the Game Boy can hold. */
 function renderTileCount(): void {
   const numTiles = editor.tileCount();
   const tooManyTiles = numTiles > MAX_TILES;
@@ -254,7 +264,7 @@ function renderSpriteUsage(): void {
     return;
   }
 
-  const usage = spriteUsage(entry.drawing);
+  const usage = spriteUsage(entry.drawing, editor.spriteHeight());
   const tooManySprites =
     usage.total > MAX_SPRITES || usage.perLine > MAX_SPRITES_PER_LINE;
 

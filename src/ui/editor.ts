@@ -1,6 +1,5 @@
 import { encodeTilemap, encodeTileNumbers, encodeTiles } from "../model/encode";
 import {
-  buildTileSet,
   createDrawing,
   getDrawingPixel,
   MAX_TILES,
@@ -32,6 +31,12 @@ import {
   type History,
 } from "../model/history";
 import { floodFill } from "../model/fill";
+import { type SpriteHeight } from "../model/sprite";
+import {
+  buildTallSpriteTileSet,
+  buildTileSet,
+  type TileSet,
+} from "../model/tileset";
 
 const TARGET_CANVAS_SIZE = 832;
 const MIN_PIXEL_SIZE = 3;
@@ -56,6 +61,8 @@ type EditorState = {
   drawings: DrawingEntry[];
   currentEntry: DrawingEntry | null;
   currentPalette: Palette;
+  /** The height of every hardware sprite on the screen: 8 or 16 pixels. */
+  spriteHeight: SpriteHeight;
   currentTool: Tool;
   currentShade: Shade;
   zoomedTile: Point | null;
@@ -81,7 +88,7 @@ let state: EditorState;
  * Sets up the editor on `canvas`.
  *
  * `onChange` is called whenever the editor's state changes in a way the rest of the page shows
- * (the drawings, the current drawing, the shade or the palette), and once at the end of `init`,
+ * (the drawings, the current drawing, the tool, the shade, the palette or the sprite height), and once at the end of `init`,
  * so the page starts out in sync.
  */
 export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
@@ -91,6 +98,7 @@ export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
     drawings: [],
     currentEntry: null,
     currentPalette: GREEN,
+    spriteHeight: 8,
     currentTool: "pencil",
     currentShade: Shade.DARKEST,
     zoomedTile: null,
@@ -106,10 +114,20 @@ export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
   onChange();
 }
 
-/** How many different tiles all the drawings use together. */
+/** The drawings' tiles as the export writes them: with 8 × 16 sprites, every hardware sprite's two tiles sit next to each other. */
+function currentTileSet(): TileSet {
+  if (state.spriteHeight === 8) {
+    const allDrawings = state.drawings.map((e) => e.drawing);
+
+    return buildTileSet(allDrawings);
+  } else {
+    return buildTallSpriteTileSet(state.drawings);
+  }
+}
+
+/** How many tiles the export would write, laid out for the current sprite height. */
 export function tileCount(): number {
-  const allDrawings = state.drawings.map((e) => e.drawing);
-  const tileSet = buildTileSet(allDrawings);
+  const tileSet = currentTileSet();
 
   return tileSet.tiles.length;
 }
@@ -218,6 +236,17 @@ export function setPaletteForVersion(version: string): void {
 
   if (state.currentEntry !== null) requestRender();
 
+  state.onChange();
+}
+
+/** How tall every hardware sprite is: 8 or 16 pixels. */
+export function spriteHeight(): SpriteHeight {
+  return state.spriteHeight;
+}
+
+/** Makes every hardware sprite `height` pixels tall, and reports the change. */
+export function setSpriteHeight(height: SpriteHeight): void {
+  state.spriteHeight = height;
   state.onChange();
 }
 
@@ -551,14 +580,13 @@ export function replaceDrawings(entries: DrawingEntry[]): void {
 export function exportDrawings(): void {
   if (state.drawings.length === 0) return;
 
-  const allDrawings = state.drawings.map((e) => e.drawing);
-  const tileSet = buildTileSet(allDrawings);
+  const tileSet = currentTileSet();
   const numTiles = tileSet.tiles.length;
 
   if (numTiles > MAX_TILES) {
     showError(
       "Can't export",
-      `These drawings use ${numTiles} unique tiles; the Game Boy can only use ${MAX_TILES}.`,
+      `These drawings need ${numTiles} tiles; the Game Boy can only use ${MAX_TILES}.`,
     );
     return;
   }

@@ -66,7 +66,8 @@ export function tileToPixel(tile: Point): Point {
   return { x: tile.x * TILE_SIZE, y: tile.y * TILE_SIZE };
 }
 
-function copyTile(drawing: Drawing, tilePos: Point): Uint8Array {
+/** A copy of the 8×8 tile at tile position `tilePos` (in tiles, not pixels), as TILE_SIZE × TILE_SIZE shades, row by row. */
+export function copyTile(drawing: Drawing, tilePos: Point): Uint8Array {
   const tileStart = tileToPixel(tilePos);
   const tile = new Uint8Array(TILE_SIZE * TILE_SIZE);
 
@@ -82,51 +83,4 @@ function copyTile(drawing: Drawing, tilePos: Point): Uint8Array {
   }
 
   return tile;
-}
-
-/** The tiles of several drawings, with each distinct tile stored once. */
-export type TileSet = {
-  /** Each distinct tile once, in order of first appearance: drawing by drawing, each read row by row. A tile's index here is its tile number. */
-  tiles: Uint8Array[];
-  /** One tilemap per drawing, in the same order as the drawings. Each has one tile number per tile position of its drawing, row by row. */
-  tilemaps: number[][];
-};
-
-/**
- * Splits drawings into the 8×8 tiles they share. A tile that appears more
- * than once, in one drawing or across several, is stored once, and every
- * tilemap refers to it by the same number.
- */
-export function buildTileSet(drawings: Drawing[]): TileSet {
-  const tileSet: TileSet = {
-    tiles: [],
-    tilemaps: new Array(drawings.length),
-  };
-  const tileNumbers: Map<string, number> = new Map();
-
-  for (let i = 0; i < drawings.length; i++) {
-    const drawing = drawings[i];
-    const tileRows = drawing.height / TILE_SIZE;
-    const tileColumns = drawing.width / TILE_SIZE;
-
-    tileSet.tilemaps[i] = new Array(tileRows * tileColumns);
-
-    for (let row = 0; row < tileRows; row++) {
-      for (let col = 0; col < tileColumns; col++) {
-        const tile = copyTile(drawing, { x: col, y: row });
-        const key = tile.join("");
-
-        let tileNumber = tileNumbers.get(key);
-        if (tileNumber === undefined) {
-          tileNumber = tileSet.tiles.length;
-          tileSet.tiles.push(tile);
-          tileNumbers.set(key, tileNumber);
-        }
-
-        tileSet.tilemaps[i][row * tileColumns + col] = tileNumber;
-      }
-    }
-  }
-
-  return tileSet;
 }
