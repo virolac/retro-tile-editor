@@ -5,6 +5,8 @@ import {
   getDrawingPixel,
   MAX_TILES,
   pixelToTile,
+  SCREEN_HEIGHT,
+  SCREEN_WIDTH,
   setDrawingPixel,
   TILE_SIZE,
   tileToPixel,
@@ -36,6 +38,8 @@ const MIN_PIXEL_SIZE = 3;
 const PIXEL_LINE_THRESHOLD = 12;
 const PIXEL_LINE_COLOR = "rgba(128, 128, 128, 0.4)";
 const TILE_LINE_COLOR = "rgba(128, 128, 128)";
+const SCREEN_FRAME_COLOR = "rgb(255, 64, 64)";
+const SCREEN_FRAME_WIDTH = 2;
 
 /** A paint stroke in progress: the drawing it paints, and its pixels from before the stroke. */
 type Stroke = {
@@ -366,6 +370,36 @@ function drawGrid(ctx: CanvasRenderingContext2D): void {
   drawLines(ctx, view, TILE_SIZE, TILE_LINE_COLOR, tileLineWidth);
 }
 
+/**
+ * Outlines the part of a background the Game Boy screen shows: 160 × 144 pixels from the top-left.
+ *
+ * Only for backgrounds bigger than the screen, and not while zoomed into a tile.
+ */
+function drawScreenFrame(ctx: CanvasRenderingContext2D): void {
+  const entry = state.currentEntry!;
+
+  if (entry.kind === "sprite") return; // Not valid for sprites
+  if (state.zoomedTile !== null) return; // Not valid in Tile-mode
+
+  if (
+    entry.drawing.width <= SCREEN_WIDTH &&
+    entry.drawing.height <= SCREEN_HEIGHT
+  ) {
+    return;
+  }
+
+  const view = getView();
+
+  ctx.strokeStyle = SCREEN_FRAME_COLOR;
+  ctx.lineWidth = SCREEN_FRAME_WIDTH;
+  ctx.strokeRect(
+    0,
+    0,
+    SCREEN_WIDTH * view.pixelSize,
+    SCREEN_HEIGHT * view.pixelSize,
+  );
+}
+
 function requestRender(): void {
   if (state.renderRequested) return;
 
@@ -383,6 +417,7 @@ function render(): void {
 
   drawPixels(ctx);
   drawGrid(ctx);
+  drawScreenFrame(ctx);
 }
 
 export function handleKey(e: KeyboardEvent): void {
