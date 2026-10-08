@@ -60,6 +60,12 @@ saveBtn.addEventListener("click", editor.saveProject);
 const exportBtn = document.querySelector<HTMLButtonElement>("#exportBtn")!;
 exportBtn.addEventListener("click", editor.exportDrawings);
 
+const pencilBtn = document.querySelector<HTMLButtonElement>("#pencilBtn")!;
+pencilBtn.addEventListener("click", () => editor.selectTool("pencil"));
+
+const fillBtn = document.querySelector<HTMLButtonElement>("#fillBtn")!;
+fillBtn.addEventListener("click", () => editor.selectTool("fill"));
+
 const shadePicker = document.querySelector<HTMLDivElement>("#shadePicker")!;
 
 const newDrawingForm =
@@ -94,6 +100,25 @@ function createSwatch(shade: Shade): HTMLButtonElement {
   swatch.addEventListener("click", () => editor.selectShade(shade));
 
   return swatch;
+}
+
+/** Shows which tool is current: its button is blue and pressed. */
+function renderToolPicker(): void {
+  const currentTool = editor.currentTool();
+
+  pencilBtn.classList.toggle("uk-button-primary", currentTool === "pencil");
+  pencilBtn.classList.toggle("uk-button-default", currentTool !== "pencil");
+  pencilBtn.setAttribute(
+    "aria-pressed",
+    currentTool === "pencil" ? "true" : "false",
+  );
+
+  fillBtn.classList.toggle("uk-button-primary", currentTool === "fill");
+  fillBtn.classList.toggle("uk-button-default", currentTool !== "fill");
+  fillBtn.setAttribute(
+    "aria-pressed",
+    currentTool === "fill" ? "true" : "false",
+  );
 }
 
 /** Rebuilds the shade picker: one swatch per shade, in the color it has on the canvas, with the current one pressed. */
@@ -241,8 +266,9 @@ function renderSpriteUsage(): void {
     spriteUsageText.textContent += " (more than the Game Boy can show)";
 }
 
-/** Rebuilds everything in the sidebar from the editor's state: the shade picker, the drawing list, the tile count and the sprite usage. */
+/** Rebuilds everything in the sidebar from the editor's state: the tool, the shade picker, the drawing list, the tile count and the sprite usage. */
 function renderSidebar(): void {
+  renderToolPicker();
   renderShadePicker();
   renderDrawingList();
   renderTileCount();

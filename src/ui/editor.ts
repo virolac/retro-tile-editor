@@ -29,6 +29,7 @@ import {
   type Edit,
   type History,
 } from "../model/history";
+import { floodFill } from "../model/fill";
 
 const TARGET_CANVAS_SIZE = 832;
 const MIN_PIXEL_SIZE = 3;
@@ -42,12 +43,16 @@ type Stroke = {
   before: Uint8Array;
 };
 
+/** What a left click on the canvas does: paint one pixel at a time, or fill an area. */
+type Tool = "pencil" | "fill";
+
 type EditorState = {
   canvas: HTMLCanvasElement;
   pixelCanvas: HTMLCanvasElement;
   drawings: DrawingEntry[];
   currentEntry: DrawingEntry | null;
   currentPalette: Palette;
+  currentTool: Tool;
   currentShade: Shade;
   zoomedTile: Point | null;
   renderRequested: boolean;
@@ -82,6 +87,7 @@ export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
     drawings: [],
     currentEntry: null,
     currentPalette: GREEN,
+    currentTool: "pencil",
     currentShade: Shade.DARKEST,
     zoomedTile: null,
     renderRequested: false,
@@ -208,6 +214,17 @@ export function setPaletteForVersion(version: string): void {
 
   if (state.currentEntry !== null) requestRender();
 
+  state.onChange();
+}
+
+/** What a left click on the canvas does. */
+export function currentTool(): Tool {
+  return state.currentTool;
+}
+
+/** Makes `tool` the one a left click on the canvas uses, and reports the change. */
+export function selectTool(tool: Tool): void {
+  state.currentTool = tool;
   state.onChange();
 }
 
@@ -442,7 +459,11 @@ export function handlePointerDown(e: PointerEvent): void {
     const entry = state.currentEntry!;
 
     state.stroke = { entry, before: entry.drawing.pixels.slice() };
-    setDrawingPixel(entry.drawing, point, state.currentShade);
+
+    if (state.currentTool === "pencil")
+      setDrawingPixel(entry.drawing, point, state.currentShade);
+    else floodFill(entry.drawing, point, state.currentShade);
+
     setChangedSinceSave(true);
   } else if (e.buttons === 2) {
     if (state.zoomedTile === null) state.zoomedTile = pixelToTile(point);
@@ -456,6 +477,7 @@ export function handlePointerDown(e: PointerEvent): void {
 
 export function handlePointerMove(e: PointerEvent): void {
   if ((e.buttons & 1) !== 1) return;
+  if (state.currentTool === "fill") return;
   if (state.stroke === null) return;
 
   const point = pixelUnderPointer(e);
