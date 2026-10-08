@@ -20,12 +20,27 @@ import {
 } from "../model/project";
 import { showError } from "./dialogs";
 import { defaultDrawingName, fileNameFor, isNameTaken } from "../model/names";
+import {
+  createHistory,
+  forgetEdits,
+  recordEdit,
+  redoEdit,
+  undoEdit,
+  type Edit,
+  type History,
+} from "../model/history";
 
 const TARGET_CANVAS_SIZE = 832;
 const MIN_PIXEL_SIZE = 3;
 const PIXEL_LINE_THRESHOLD = 12;
 const PIXEL_LINE_COLOR = "rgba(128, 128, 128, 0.4)";
 const TILE_LINE_COLOR = "rgba(128, 128, 128)";
+
+/** A paint stroke in progress: the drawing it paints, and its pixels from before the stroke. */
+type Stroke = {
+  entry: DrawingEntry;
+  before: Uint8Array;
+};
 
 type EditorState = {
   canvas: HTMLCanvasElement;
@@ -37,8 +52,10 @@ type EditorState = {
   zoomedTile: Point | null;
   renderRequested: boolean;
   changedSinceSave: boolean;
-  /** Whether the current paint stroke has changed pixels the page hasn't heard about yet. */
-  strokePainted: boolean;
+  /** The paint stroke in progress, or null between strokes. */
+  stroke: Stroke | null;
+  /** The paint strokes that can be undone and redone. */
+  history: History;
   onChange: () => void;
 };
 
@@ -69,7 +86,8 @@ export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
     zoomedTile: null,
     renderRequested: false,
     changedSinceSave: false,
-    strokePainted: false,
+    stroke: null,
+    history: createHistory(),
     onChange: onChange,
   };
 
@@ -179,6 +197,7 @@ export function deleteDrawing(entry: DrawingEntry): void {
   state.canvas.hidden = state.drawings.length === 0;
 
   setChangedSinceSave(true);
+  forgetEdits(state.history, entry);
 
   state.onChange();
 }
@@ -353,6 +372,17 @@ export function handleKey(e: KeyboardEvent): void {
   // Prevent inputs from changing the shade
   if (e.target instanceof HTMLInputElement) return;
 
+  const modKey = navigator.userAgent.includes("Mac") ? e.metaKey : e.ctrlKey;
+
+  if (modKey && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+
+    if (e.shiftKey) redo();
+    else undo();
+
+    return;
+  }
+
   switch (Number(e.key)) {
     case 1:
       selectShade(Shade.BRIGHTEST);
@@ -375,9 +405,18 @@ export function handleKey(e: KeyboardEvent): void {
  * Listen for it on the whole window, so letting go of the button outside the canvas still ends the stroke.
  */
 export function handlePointerUp(): void {
-  if (!state.strokePainted) return;
+  if (state.stroke === null) return;
 
-  state.strokePainted = false;
+  const entry = state.stroke.entry;
+  const edit: Edit = {
+    entry,
+    before: state.stroke.before,
+    after: entry.drawing.pixels.slice(),
+  };
+
+  recordEdit(state.history, edit);
+
+  state.stroke = null;
   state.onChange();
 }
 
@@ -400,9 +439,11 @@ export function handlePointerDown(e: PointerEvent): void {
   if (point === null) return;
 
   if (e.buttons === 1) {
-    setDrawingPixel(state.currentEntry!.drawing, point, state.currentShade);
+    const entry = state.currentEntry!;
+
+    state.stroke = { entry, before: entry.drawing.pixels.slice() };
+    setDrawingPixel(entry.drawing, point, state.currentShade);
     setChangedSinceSave(true);
-    state.strokePainted = true;
   } else if (e.buttons === 2) {
     if (state.zoomedTile === null) state.zoomedTile = pixelToTile(point);
     else state.zoomedTile = null;
@@ -415,6 +456,7 @@ export function handlePointerDown(e: PointerEvent): void {
 
 export function handlePointerMove(e: PointerEvent): void {
   if ((e.buttons & 1) !== 1) return;
+  if (state.stroke === null) return;
 
   const point = pixelUnderPointer(e);
 
@@ -423,8 +465,6 @@ export function handlePointerMove(e: PointerEvent): void {
   setDrawingPixel(state.currentEntry!.drawing, point, state.currentShade);
   requestRender();
   setChangedSinceSave(true);
-
-  state.strokePainted = true;
 }
 
 export function saveProject(): void {
@@ -441,6 +481,7 @@ export function replaceDrawings(entries: DrawingEntry[]): void {
   state.currentEntry = null;
   state.zoomedTile = null;
   state.canvas.hidden = entries.length === 0;
+  state.history = createHistory();
 
   // Select the first drawing, if it exists
   if (entries.length > 0) selectDrawing(state.drawings[0]);
@@ -499,4 +540,39 @@ function setChangedSinceSave(changed: boolean): void {
 
   if (changed) window.addEventListener("beforeunload", warnBeforeLeaving);
   else window.removeEventListener("beforeunload", warnBeforeLeaving);
+}
+
+/**
+ * Undoes the newest paint stroke and shows the drawing it was in.
+ *
+ * Does nothing during a stroke, or when there's nothing to undo.
+ */
+function undo(): void {
+  if (state.stroke !== null) return;
+
+  const entry = undoEdit(state.history);
+
+  if (entry !== null) showEdit(entry);
+}
+
+/**
+ * Redoes the most recently undone paint stroke and shows the drawing it was in.
+ *
+ * Does nothing during a stroke, or when there's nothing to redo.
+ */
+function redo(): void {
+  if (state.stroke !== null) return;
+
+  const entry = redoEdit(state.history);
+
+  if (entry !== null) showEdit(entry);
+}
+
+/** Shows an undone or redone edit: makes its drawing current, redraws it, marks unsaved changes and reports the change. */
+function showEdit(entry: DrawingEntry): void {
+  selectDrawing(entry);
+  requestRender();
+  setChangedSinceSave(true);
+
+  state.onChange();
 }
