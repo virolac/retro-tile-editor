@@ -6,6 +6,7 @@ import {
   type DrawingEntry,
 } from "./model/project";
 import { Shade } from "./model/shade";
+import { MAX_SPRITES, MAX_SPRITES_PER_LINE, spriteUsage } from "./model/sprite";
 import { askToConfirm, showError } from "./ui/dialogs";
 import * as editor from "./ui/editor";
 import { cssColor } from "./ui/palette";
@@ -66,7 +67,10 @@ const newDrawingForm =
 newDrawingForm.addEventListener("submit", newDrawingFormSubmitted);
 
 const kindSelect = document.querySelector<HTMLSelectElement>("#kindSelect")!;
-const tileCount = document.querySelector<HTMLParagraphElement>("#tileCount")!;
+const tileCountText =
+  document.querySelector<HTMLParagraphElement>("#tileCount")!;
+const spriteUsageText =
+  document.querySelector<HTMLParagraphElement>("#spriteUsage")!;
 
 /**
  * A button that shows `shade` in the color it has on the canvas.
@@ -205,17 +209,44 @@ function renderTileCount(): void {
   const numTiles = editor.tileCount();
   const tooManyTiles = numTiles > MAX_TILES;
 
-  tileCount.textContent = `${numTiles} of ${MAX_TILES} tiles`;
-  tileCount.classList.toggle("uk-text-danger", tooManyTiles);
+  tileCountText.textContent = `${numTiles} of ${MAX_TILES} tiles`;
+  tileCountText.classList.toggle("uk-text-danger", tooManyTiles);
 
-  if (tooManyTiles) tileCount.textContent += " (too many to export)";
+  if (tooManyTiles) tileCountText.textContent += " (too many to export)";
 }
 
-/** Rebuilds everything in the sidebar from the editor's state: the shade picker, the drawing list and the tile count. */
+/**
+ * For a sprite, shows how many hardware sprites it needs.
+ *
+ * In red when that's more than the Game Boy can show.
+ * Hidden for backgrounds.
+ */
+function renderSpriteUsage(): void {
+  const entry = editor.currentEntry();
+
+  if (entry === null) {
+    spriteUsageText.hidden = true;
+    return;
+  }
+
+  const usage = spriteUsage(entry.drawing);
+  const tooManySprites =
+    usage.total > MAX_SPRITES || usage.perLine > MAX_SPRITES_PER_LINE;
+
+  spriteUsageText.textContent = `${entry.name} uses ${usage.total} of ${MAX_SPRITES} sprites, ${usage.perLine} of ${MAX_SPRITES_PER_LINE} per line`;
+  spriteUsageText.classList.toggle("uk-text-danger", tooManySprites);
+  spriteUsageText.hidden = entry.kind === "background";
+
+  if (tooManySprites)
+    spriteUsageText.textContent += " (more than the Game Boy can show)";
+}
+
+/** Rebuilds everything in the sidebar from the editor's state: the shade picker, the drawing list, the tile count and the sprite usage. */
 function renderSidebar(): void {
   renderShadePicker();
   renderDrawingList();
   renderTileCount();
+  renderSpriteUsage();
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#editor")!;
