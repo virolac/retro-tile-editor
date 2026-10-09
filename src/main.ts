@@ -299,6 +299,7 @@ function renderSidebar(): void {
 const canvas = document.querySelector<HTMLCanvasElement>("#editor")!;
 canvas.addEventListener("pointerdown", editor.handlePointerDown);
 canvas.addEventListener("pointermove", editor.handlePointerMove);
+canvas.addEventListener("pointerleave", editor.handlePointerLeave);
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 editor.init(canvas, renderSidebar);

@@ -84,3 +84,24 @@ export function copyTile(drawing: Drawing, tilePos: Point): Uint8Array {
 
   return tile;
 }
+
+/** Overwrites the 8×8 tile at tile position `tilePos` (in tiles, not pixels) with `tile`: TILE_SIZE × TILE_SIZE shades, row by row, as `copyTile` gives them. */
+export function pasteTile(
+  drawing: Drawing,
+  tilePos: Point,
+  tile: Uint8Array,
+): void {
+  const tileStart = tileToPixel(tilePos);
+
+  for (let cellY = 0; cellY < TILE_SIZE; cellY++) {
+    for (let cellX = 0; cellX < TILE_SIZE; cellX++) {
+      const targetPoint = {
+        x: tileStart.x + cellX,
+        y: tileStart.y + cellY,
+      };
+      const shade = getTilePixel(tile, { x: cellX, y: cellY });
+
+      setDrawingPixel(drawing, targetPoint, shade);
+    }
+  }
+}

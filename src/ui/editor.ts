@@ -1,8 +1,10 @@
 import { encodeTilemap, encodeTileNumbers, encodeTiles } from "../model/encode";
 import {
+  copyTile,
   createDrawing,
   getDrawingPixel,
   MAX_TILES,
+  pasteTile,
   pixelToTile,
   SCREEN_HEIGHT,
   SCREEN_WIDTH,
@@ -52,6 +54,9 @@ type Stroke = {
   before: Uint8Array;
 };
 
+/** A pointer position in the browser window, as pointer events give it. */
+type ClientPoint = { clientX: number; clientY: number };
+
 /** What a left click on the canvas does: paint one pixel at a time, or fill an area. */
 type Tool = "pencil" | "fill";
 
@@ -68,6 +73,10 @@ type EditorState = {
   /** Whether the canvas shows the pixel and tile lines. */
   gridVisible: boolean;
   zoomedTile: Point | null;
+  /** Where the pointer is while it's over the canvas, or null while it's elsewhere. */
+  pointer: ClientPoint | null;
+  /** The tile Ctrl+C copied last, or null before the first copy. */
+  copiedTile: Uint8Array | null;
   renderRequested: boolean;
   changedSinceSave: boolean;
   /** The paint stroke in progress, or null between strokes. */
@@ -104,6 +113,8 @@ export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
     currentShade: Shade.DARKEST,
     gridVisible: true,
     zoomedTile: null,
+    pointer: null,
+    copiedTile: null,
     renderRequested: false,
     changedSinceSave: false,
     stroke: null,
@@ -475,12 +486,25 @@ export function handleKey(e: KeyboardEvent): void {
   if (e.target instanceof HTMLInputElement) return;
 
   const modKey = navigator.userAgent.includes("Mac") ? e.metaKey : e.ctrlKey;
+  const lowerKey = e.key.toLowerCase();
 
-  if (modKey && e.key.toLowerCase() === "z") {
+  if (modKey && lowerKey === "z") {
     e.preventDefault();
 
     if (e.shiftKey) redo();
     else undo();
+
+    return;
+  }
+
+  const tilePos = tileUnderPointer();
+  if (modKey && (lowerKey === "c" || lowerKey === "v")) {
+    if (tilePos === null) return;
+
+    e.preventDefault();
+
+    if (lowerKey === "c") copyTileAt(tilePos);
+    else pasteTileAt(tilePos);
 
     return;
   }
@@ -522,11 +546,16 @@ export function handlePointerUp(): void {
   state.onChange();
 }
 
-function pixelUnderPointer(e: PointerEvent): Point | null {
+/** The drawing pixel under `pointer`, or null when it's outside the part of the drawing on the canvas. */
+function pixelUnderPointer(pointer: ClientPoint): Point | null {
   const view = getView();
   const rect = state.canvas.getBoundingClientRect();
-  const x = Math.floor(((e.clientX - rect.left) / rect.width) * view.width);
-  const y = Math.floor(((e.clientY - rect.top) / rect.height) * view.height);
+  const x = Math.floor(
+    ((pointer.clientX - rect.left) / rect.width) * view.width,
+  );
+  const y = Math.floor(
+    ((pointer.clientY - rect.top) / rect.height) * view.height,
+  );
 
   if (x >= 0 && x < view.width && y >= 0 && y < view.height) {
     return { x: view.topLeft.x + x, y: view.topLeft.y + y };
@@ -561,6 +590,8 @@ export function handlePointerDown(e: PointerEvent): void {
 }
 
 export function handlePointerMove(e: PointerEvent): void {
+  state.pointer = { clientX: e.clientX, clientY: e.clientY };
+
   if ((e.buttons & 1) !== 1) return;
   if (state.currentTool === "fill") return;
   if (state.stroke === null) return;
@@ -572,6 +603,52 @@ export function handlePointerMove(e: PointerEvent): void {
   setDrawingPixel(state.currentEntry!.drawing, point, state.currentShade);
   requestRender();
   setChangedSinceSave(true);
+}
+
+/** Forgets the pointer when it leaves the canvas, so Ctrl+C and Ctrl+V don't act on the tile it was over last. */
+export function handlePointerLeave(): void {
+  state.pointer = null;
+}
+
+/** The tile under the pointer, or null when the pointer isn't over the current drawing. */
+function tileUnderPointer(): Point | null {
+  if (state.currentEntry === null || state.pointer === null) return null;
+
+  const pixel = pixelUnderPointer(state.pointer);
+  if (pixel === null) return null;
+
+  return pixelToTile(pixel);
+}
+
+/** Copies the tile at `tilePos` in the current drawing, for Ctrl+V to paste. */
+function copyTileAt(tilePos: Point): void {
+  state.copiedTile = copyTile(state.currentEntry!.drawing, tilePos);
+}
+
+/**
+ * Pastes the copied tile over the tile at `tilePos` in the current drawing, as one edit that Ctrl+Z undoes.
+ *
+ * Does nothing before the first copy, or during a paint stroke.
+ */
+function pasteTileAt(tilePos: Point): void {
+  if (state.copiedTile === null || state.stroke !== null) return;
+
+  const entry = state.currentEntry!;
+  const before = entry.drawing.pixels.slice();
+
+  pasteTile(entry.drawing, tilePos, state.copiedTile);
+
+  const edit: Edit = {
+    entry,
+    before,
+    after: entry.drawing.pixels.slice(),
+  };
+
+  recordEdit(state.history, edit);
+  requestRender();
+  setChangedSinceSave(true);
+
+  state.onChange();
 }
 
 export function saveProject(): void {
