@@ -65,6 +65,8 @@ type EditorState = {
   spriteHeight: SpriteHeight;
   currentTool: Tool;
   currentShade: Shade;
+  /** Whether the canvas shows the pixel and tile lines. */
+  gridVisible: boolean;
   zoomedTile: Point | null;
   renderRequested: boolean;
   changedSinceSave: boolean;
@@ -87,9 +89,8 @@ let state: EditorState;
 /**
  * Sets up the editor on `canvas`.
  *
- * `onChange` is called whenever the editor's state changes in a way the rest of the page shows
- * (the drawings, the current drawing, the tool, the shade, the palette or the sprite height), and once at the end of `init`,
- * so the page starts out in sync.
+ * `onChange` is called whenever the editor's state changes in a way the rest of the page shows,
+ * and once at the end of `init`, so the page starts out in sync.
  */
 export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
   state = {
@@ -101,6 +102,7 @@ export function init(canvas: HTMLCanvasElement, onChange: () => void): void {
     spriteHeight: 8,
     currentTool: "pencil",
     currentShade: Shade.DARKEST,
+    gridVisible: true,
     zoomedTile: null,
     renderRequested: false,
     changedSinceSave: false,
@@ -272,6 +274,18 @@ export function selectShade(shade: Shade): void {
   state.onChange();
 }
 
+/** Whether the canvas shows the pixel and tile lines. */
+export function isGridVisible(): boolean {
+  return state.gridVisible;
+}
+
+/** Shows or hides the pixel and tile lines on the canvas, and reports the change. */
+export function setGridVisible(visible: boolean): void {
+  state.gridVisible = visible;
+  if (state.currentEntry !== null) requestRender();
+  state.onChange();
+}
+
 /** The color `shade` shows as on the canvas: the current palette's color, or transparent for shade 0 of a sprite. */
 export function shadeColor(shade: Shade): Rgba {
   return colorFor(shade, state.currentEntry?.kind ?? "background");
@@ -384,7 +398,14 @@ function drawLines(
   }
 }
 
+/**
+ * Draws the tile lines, and the pixel lines too when the pixels are big enough to need them.
+ *
+ * Draws nothing while the grid is hidden.
+ */
 function drawGrid(ctx: CanvasRenderingContext2D): void {
+  if (!state.gridVisible) return;
+
   const view = getView();
 
   let tileLineWidth = 1;

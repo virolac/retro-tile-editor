@@ -78,6 +78,11 @@ fillBtn.addEventListener("click", () => editor.selectTool("fill"));
 
 const shadePicker = document.querySelector<HTMLDivElement>("#shadePicker")!;
 
+const gridCheckbox = document.querySelector<HTMLInputElement>("#gridCheckbox")!;
+gridCheckbox.addEventListener("change", () =>
+  editor.setGridVisible(gridCheckbox.checked),
+);
+
 const newDrawingForm =
   document.querySelector<HTMLFormElement>("#newDrawingForm")!;
 newDrawingForm.addEventListener("submit", newDrawingFormSubmitted);
@@ -150,6 +155,11 @@ function newDrawingFormSubmitted(e: SubmitEvent): void {
     heightInput.valueAsNumber,
     kindSelect.value,
   );
+}
+
+/** Ticks the grid checkbox when the editor shows the grid lines. */
+function renderGridCheckbox(): void {
+  gridCheckbox.checked = editor.isGridVisible();
 }
 
 /** Rebuilds the drawing list from the editor's drawings, and shows or hides what depends on having any. */
@@ -276,10 +286,11 @@ function renderSpriteUsage(): void {
     spriteUsageText.textContent += " (more than the Game Boy can show)";
 }
 
-/** Rebuilds everything in the sidebar from the editor's state: the tool, the shade picker, the drawing list, the tile count and the sprite usage. */
+/** Rebuilds everything in the sidebar from the editor's state: the tool, the shade picker, the grid checkbox, the drawing list, the tile count and the sprite usage. */
 function renderSidebar(): void {
   renderToolPicker();
   renderShadePicker();
+  renderGridCheckbox();
   renderDrawingList();
   renderTileCount();
   renderSpriteUsage();
